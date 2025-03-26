@@ -8,16 +8,20 @@ import (
 
 func main() {
 	fmt.Printf("Hallo Chirpy\n")
+	const port = ":8080"
+	const filepathRoot = "."
 
 	mutex := http.NewServeMux()
 
-	httpServer := http.Server{
-		Addr:    ":8080",
+	httpServer := &http.Server{
+		Addr:    port,
 		Handler: mutex,
 	}
 
-	err := httpServer.ListenAndServe()
+	mutex.Handle("/", http.FileServer(http.Dir(filepathRoot)))
+
 	log.Printf("Serving on port 8080\n")
+	err := httpServer.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
 	}
