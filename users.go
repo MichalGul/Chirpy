@@ -14,13 +14,6 @@ func (cfg *apiConfig) handleUsers(response http.ResponseWriter, request *http.Re
 		Email string `json:"email"`
 	}
 
-	type response_parameters struct {
-		Id         string `json:"id"`
-		Created_at string `json:"created_at"`
-		Updated_at string `json:"updated_at"`
-		Email      string `json:"email"`
-	}
-
 	decoder := json.NewDecoder(request.Body)
 	reqParams := request_parameters{}
 	reqErr := decoder.Decode(&reqParams)

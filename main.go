@@ -22,6 +22,8 @@ type User struct {
 	Email     string    `json:"email"`
 }
 
+
+
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
@@ -43,6 +45,7 @@ func main() {
 	}
 
 	dbQueries := database.New(dbConn)
+
 	apiConfig := apiConfig{
 		fileserverHits: atomic.Int32{},
 		db:             dbQueries,
@@ -55,13 +58,22 @@ func main() {
 		Handler: httpMultiplexer,
 	}
 
+	// Main
 	httpMultiplexer.Handle("/app/", apiConfig.middlewareMetricsInc(http.StripPrefix("/app/", http.FileServer(http.Dir(filepathRoot))))) // This will handle all paths with app prefix. Eg. app/assets
+
+	// Utils
 	httpMultiplexer.HandleFunc("GET /api/healthz", healthHandler)
-	httpMultiplexer.HandleFunc("POST /api/validate_chirp", handleValidation)
+
+	// Users
 	httpMultiplexer.HandleFunc("POST /api/users", apiConfig.handleUsers)
 
+	// Admin
 	httpMultiplexer.HandleFunc("GET /admin/metrics", apiConfig.returnServerHitsHandler)
 	httpMultiplexer.HandleFunc("POST /admin/reset", apiConfig.resetServerHitsHandler)
+
+	// Chirps
+	httpMultiplexer.HandleFunc("POST /api/chirps", apiConfig.handleChirps)
+	httpMultiplexer.HandleFunc("POST /api/validate_chirp", handleValidation)
 
 	log.Printf("Serving on port 8080\n")
 	err := httpServer.ListenAndServe()

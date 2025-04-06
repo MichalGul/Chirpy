@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func validateBadWorkChirp(chirp string) string {
+func validateBadWordChirp(chirp string) string {
 
 	log.Printf("Input chirp: %s \n", chirp)
 
@@ -66,7 +66,7 @@ func handleValidation(response http.ResponseWriter, request *http.Request) {
 	}
 
 	// todo add profane check
-	cleanedChirp := validateBadWorkChirp(reqParams.Body)
+	cleanedChirp := validateBadWordChirp(reqParams.Body)
 
 	respBody.Valid = true
 	respBody.Error = ""
