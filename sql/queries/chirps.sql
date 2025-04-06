@@ -10,3 +10,9 @@ VALUES (
     $2
 )
 RETURNING *;
+
+-- name: GetChirps :many
+SELECT * FROM chirps order by created_at asc;
+
+-- name: GetChirpById :one
+SELECT * from chirps where chirps.id = $1;

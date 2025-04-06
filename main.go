@@ -22,8 +22,6 @@ type User struct {
 	Email     string    `json:"email"`
 }
 
-
-
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
@@ -74,6 +72,8 @@ func main() {
 	// Chirps
 	httpMultiplexer.HandleFunc("POST /api/chirps", apiConfig.handleChirps)
 	httpMultiplexer.HandleFunc("POST /api/validate_chirp", handleValidation)
+	httpMultiplexer.HandleFunc("GET /api/chirps", apiConfig.handleGetChirps)
+	httpMultiplexer.HandleFunc("GET /api/chirps/{chirpID}", apiConfig.handleGetChirpByID)
 
 	log.Printf("Serving on port 8080\n")
 	err := httpServer.ListenAndServe()
