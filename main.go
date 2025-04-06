@@ -64,6 +64,8 @@ func main() {
 
 	// Users
 	httpMultiplexer.HandleFunc("POST /api/users", apiConfig.handleUsers)
+	httpMultiplexer.HandleFunc("POST /api/login", apiConfig.handleLogin)
+
 
 	// Admin
 	httpMultiplexer.HandleFunc("GET /admin/metrics", apiConfig.returnServerHitsHandler)
