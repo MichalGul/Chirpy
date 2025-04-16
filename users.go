@@ -2,18 +2,34 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/MichalGul/Chirpy/internal/auth"
 	"github.com/MichalGul/Chirpy/internal/database"
 )
 
+func parseExpirationTime(expirationTime *int) int {
+	var expiresIn int = 3600
+	if expirationTime != nil {
+		expiresIn = *expirationTime
+
+		if expiresIn > 3600 {
+			expiresIn = 3600
+		}
+	}
+	return expiresIn
+
+}
+
 func (cfg *apiConfig) handleLogin(response http.ResponseWriter, request *http.Request) {
 
 	type request_parameters struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email            string `json:"email"`
+		Password         string `json:"password"`
+		ExpiresInSeconds *int   `json:"expires_in_seconds,omitempty"`
 	}
 
 	decoder := json.NewDecoder(request.Body)
@@ -23,6 +39,9 @@ func (cfg *apiConfig) handleLogin(response http.ResponseWriter, request *http.Re
 		respondWithError(response, 500, "Error decoding parameters", reqErr)
 		return
 	}
+
+	expiresIn := parseExpirationTime(reqParams.ExpiresInSeconds)
+	fmt.Printf("Expires in %d", expiresIn)
 
 	// get user by email
 	user, getErr := cfg.db.GetUserByEmail(request.Context(), reqParams.Email)
@@ -37,11 +56,18 @@ func (cfg *apiConfig) handleLogin(response http.ResponseWriter, request *http.Re
 		return
 	}
 
+	token, err := auth.MakeJWT(user.ID, cfg.secret, time.Duration(expiresIn)*time.Second)
+	if err != nil {
+		respondWithError(response, 401, "error creating token", err)
+		return
+	}
+
 	returnUser := User{
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email:     user.Email,
+		Token:     &token,
 	}
 
 	respondWithJSON(response, 200, returnUser)

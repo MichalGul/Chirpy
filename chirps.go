@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/MichalGul/Chirpy/internal/auth"
 	"github.com/MichalGul/Chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -31,7 +32,6 @@ func (cfg *apiConfig) handleChirps(response http.ResponseWriter, request *http.R
 
 	type request_parameters struct {
 		Body   string    `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
 	}
 
 	decoder := json.NewDecoder(request.Body)
@@ -44,6 +44,18 @@ func (cfg *apiConfig) handleChirps(response http.ResponseWriter, request *http.R
 
 	log.Printf("chirp request params: %s\n", reqParams)
 
+	tokenString, err := auth.GetBearerToken(request.Header)
+	if err != nil {
+		respondWithError(response, 401, "Unauthorized", err)
+		return
+	}
+
+	userId, err := auth.ValidateJWT(tokenString, cfg.secret)
+	if err != nil {
+		respondWithError(response, 401, "Unauthorized", err)
+		return
+	}
+
 	cleanedChirp, validateError := validateChirp(reqParams.Body)
 	if validateError != nil {
 		respondWithError(response, http.StatusBadRequest, validateError.Error(), validateError)
@@ -52,7 +64,7 @@ func (cfg *apiConfig) handleChirps(response http.ResponseWriter, request *http.R
 
 	createdChirp, createError := cfg.db.CreateChirp(request.Context(), database.CreateChirpParams{
 		Body:   cleanedChirp,
-		UserID: reqParams.UserID,
+		UserID: userId,
 	})
 
 	if createError != nil {
@@ -65,7 +77,7 @@ func (cfg *apiConfig) handleChirps(response http.ResponseWriter, request *http.R
 		CreatedAt: createdChirp.CreatedAt,
 		UpdatedAt: createdChirp.UpdatedAt,
 		Body:      cleanedChirp,
-		UserID:    reqParams.UserID,
+		UserID:    userId,
 	}
 
 	response.Header().Set("Content-Type", "application/json")
@@ -120,12 +132,12 @@ func (cfg *apiConfig) handleGetChirpByID(response http.ResponseWriter, request *
 		return
 	}
 
-	chirp := Chirp {
-		ID: chirpDb.ID,
+	chirp := Chirp{
+		ID:        chirpDb.ID,
 		CreatedAt: chirpDb.CreatedAt,
 		UpdatedAt: chirpDb.UpdatedAt,
-		Body: chirpDb.Body,
-		UserID: chirpDb.UserID,
+		Body:      chirpDb.Body,
+		UserID:    chirpDb.UserID,
 	}
 	response.Header().Set("Content-Type", "application/json")
 	respondWithJSON(response, 200, chirp)
