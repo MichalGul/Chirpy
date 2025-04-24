@@ -31,7 +31,7 @@ var NoRowError = errors.New("sql: no rows in result set")
 func (cfg *apiConfig) handleChirps(response http.ResponseWriter, request *http.Request) {
 
 	type request_parameters struct {
-		Body   string    `json:"body"`
+		Body string `json:"body"`
 	}
 
 	decoder := json.NewDecoder(request.Body)
@@ -141,6 +141,60 @@ func (cfg *apiConfig) handleGetChirpByID(response http.ResponseWriter, request *
 	}
 	response.Header().Set("Content-Type", "application/json")
 	respondWithJSON(response, 200, chirp)
+
+}
+
+func (cfg *apiConfig) handleDeleteChirpByID(response http.ResponseWriter, request *http.Request) {
+
+	chirpID := request.PathValue("chirpID") // Extract value of chirpID
+
+	chirpUUID, parseErr := uuid.Parse(chirpID)
+	if parseErr != nil {
+		respondWithError(response, 500, "error parsing id to uuid", parseErr)
+		return
+	}
+
+	tokenString, err := auth.GetBearerToken(request.Header)
+	if err != nil {
+		respondWithError(response, 401, "Unauthorized", err)
+		return
+	}
+
+	userId, err := auth.ValidateJWT(tokenString, cfg.secret)
+	if err != nil {
+		respondWithError(response, 401, "Unauthorized", err)
+		return
+	}
+
+	chirpDb, getErr := cfg.db.GetChirpById(request.Context(), chirpUUID)
+	if getErr != nil {
+		if getErr.Error() == NoRowError.Error() {
+			respondWithError(response, 404, "Chirp not found", getErr)
+			return
+		}
+
+		respondWithError(response, 500, "unknown error getting chirp by id", getErr)
+		return
+	}
+
+	if userId != chirpDb.UserID {
+		respondWithError(response, 403, "User is not owner of that chirp", getErr)
+		return
+	}
+
+	delErr := cfg.db.DeleteChirpById(request.Context(), chirpUUID)
+	if delErr != nil {
+		if err.Error() == NoRowError.Error() {
+			respondWithError(response, 404, "Chirp not found", delErr)
+			return
+		}
+
+		respondWithError(response, 500, "unknown error deleting chirp by id", delErr)
+		return
+	}
+
+	response.Header().Set("Content-Type", "application/json")
+	respondWithJSON(response, 204, nil)
 
 }
 

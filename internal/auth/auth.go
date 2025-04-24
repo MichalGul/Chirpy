@@ -10,6 +10,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+	"crypto/rand"
+	"encoding/hex"
 )
 
 type TokenType string
@@ -103,4 +105,18 @@ func GetBearerToken(headers http.Header) (string, error) {
 	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
 	return tokenString, nil
+}
+
+
+func MakeRefreshToken() (string, error) {
+	data := make([]byte, 32)
+	_, err := rand.Read(data)
+	if err!=nil {
+		return "", fmt.Errorf("error generating refresh token: %v", err)
+	}
+
+	encoded_data := hex.EncodeToString(data)
+	log.Printf("Refresh token generated: %s\n", encoded_data)
+
+	return encoded_data, nil
 }

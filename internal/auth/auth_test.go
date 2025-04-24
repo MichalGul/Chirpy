@@ -179,6 +179,34 @@ func TestValidateJWT(t *testing.T) {
 		})
 	}
 
+}
+
+func TestMakeRefreshToken(t *testing.T) {
+
+	tests := []struct {
+		name 		string
+		wantErr     bool
+	}{
+		{
+			name:        "Correct Make Refresh Token",
+			wantErr:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tokenString, err := MakeRefreshToken()
+			if !tt.wantErr && len(tokenString) == 0 {
+				t.Error("Expected a valid token string, but got an empty string")
+			}
+			fmt.Printf("Created token string %s\n", tokenString)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("MakeRefreshToken() error = %v, wantErr %v", err, tt.wantErr)
+			}
 
 
+
+		})
+	}
 }

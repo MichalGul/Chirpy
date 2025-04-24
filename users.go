@@ -29,7 +29,6 @@ func (cfg *apiConfig) handleLogin(response http.ResponseWriter, request *http.Re
 	type request_parameters struct {
 		Email            string `json:"email"`
 		Password         string `json:"password"`
-		ExpiresInSeconds *int   `json:"expires_in_seconds,omitempty"`
 	}
 
 	decoder := json.NewDecoder(request.Body)
@@ -40,7 +39,7 @@ func (cfg *apiConfig) handleLogin(response http.ResponseWriter, request *http.Re
 		return
 	}
 
-	expiresIn := parseExpirationTime(reqParams.ExpiresInSeconds)
+	expiresIn := parseExpirationTime(nil)
 	fmt.Printf("Expires in %d", expiresIn)
 
 	// get user by email
@@ -62,12 +61,29 @@ func (cfg *apiConfig) handleLogin(response http.ResponseWriter, request *http.Re
 		return
 	}
 
+	refreshToken, err := auth.MakeRefreshToken()
+	if err != nil {
+		respondWithError(response, 401, "error creating refresh token", err)
+		return
+	}
+
+	createdRefreshToken, err := cfg.db.CreateRefreshToken(request.Context(), database.CreateRefreshTokenParams{
+		Token: refreshToken,
+		UserID: user.ID,
+		ExpiresAt: time.Now().Add(time.Duration(60*24)*time.Hour),
+	})
+	if err != nil {
+		respondWithError(response, 401, "error adding refresh token to database", err)
+		return
+	}
+
 	returnUser := User{
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email:     user.Email,
 		Token:     &token,
+		RefreshToken: &createdRefreshToken.Token,
 	}
 
 	respondWithJSON(response, 200, returnUser)
@@ -117,4 +133,66 @@ func (cfg *apiConfig) handleUsers(response http.ResponseWriter, request *http.Re
 
 	response.Header().Set("Content-Type", "application/json")
 	respondWithJSON(response, 201, respBody)
+}
+
+
+func (cfg *apiConfig) handleEditUser(response http.ResponseWriter, request *http.Request) {
+	
+	//expected request put parameters
+	type request_parameters struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+
+
+	tokenString, err := auth.GetBearerToken(request.Header)
+	if err != nil {
+		respondWithError(response, 401, "Unauthorized", err)
+		return
+	}
+
+	userId, err := auth.ValidateJWT(tokenString, cfg.secret)
+	if err != nil {
+		respondWithError(response, 401, "Unauthorized", err)
+		return
+	}
+
+	decoder := json.NewDecoder(request.Body)
+	reqParams := request_parameters{}
+	reqErr := decoder.Decode(&reqParams)
+	if reqErr != nil {
+		respondWithError(response, 500, "Error decoding parameters", reqErr)
+		return
+	}
+
+	log.Printf("req: %s\n", reqParams)
+
+	passwordHash, hashErr := auth.HashPassword(reqParams.Password)
+	if hashErr != nil {
+		respondWithError(response, 500, "Error hashing user password", hashErr)
+		return
+	}
+
+	editedUser, err := cfg.db.UpdateUser(request.Context(), database.UpdateUserParams{
+		ID: userId,
+		Email: reqParams.Email,
+		HashedPassword: passwordHash,
+	})
+
+	if err != nil {
+		respondWithError(response, 404, "error uupdating user to edit", err)
+		return
+	}
+
+	respBody := User{
+		ID:        editedUser.ID,
+		CreatedAt: editedUser.CreatedAt,
+		UpdatedAt: editedUser.UpdatedAt,
+		Email:     editedUser.Email,
+	}
+
+	response.Header().Set("Content-Type", "application/json")
+	respondWithJSON(response, 200, respBody)
+
 }
