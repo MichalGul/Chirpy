@@ -22,6 +22,7 @@ type User struct {
 	Email        string    `json:"email"`
 	Token        *string   `json:"token,omitempty"`
 	RefreshToken *string   `json:"refresh_token,omitempty"`
+	IsChirpyRed  *bool     `json:"is_chirpy_red,omitempty"`
 }
 
 type apiConfig struct {
@@ -29,6 +30,7 @@ type apiConfig struct {
 	db             *database.Queries
 	platform       string
 	secret         string
+	polka_key      string
 }
 
 func main() {
@@ -41,6 +43,7 @@ func main() {
 	dbURL := os.Getenv("DB_URL")
 	currentPlatform := os.Getenv("PLATFORM")
 	secret := os.Getenv("SECRET")
+	polka_key := os.Getenv("POLKA_KEY")
 
 	dbConn, dbErr := sql.Open("postgres", dbURL)
 	if dbErr != nil {
@@ -54,6 +57,7 @@ func main() {
 		db:             dbQueries,
 		platform:       currentPlatform,
 		secret:         secret,
+		polka_key:      polka_key,
 	}
 	httpMultiplexer := http.NewServeMux()
 
@@ -72,12 +76,11 @@ func main() {
 	httpMultiplexer.HandleFunc("POST /api/users", apiConfig.handleUsers)
 	httpMultiplexer.HandleFunc("POST /api/login", apiConfig.handleLogin)
 	httpMultiplexer.HandleFunc("PUT /api/users", apiConfig.handleEditUser)
+	httpMultiplexer.HandleFunc("POST /api/polka/webhooks", apiConfig.handlePolkaWebhook)
 
 	//Tokens
 	httpMultiplexer.HandleFunc("POST /api/refresh", apiConfig.handleRefresh)
 	httpMultiplexer.HandleFunc("POST /api/revoke", apiConfig.handleRevoke)
-
-
 
 	// Admin
 	httpMultiplexer.HandleFunc("GET /admin/metrics", apiConfig.returnServerHitsHandler)
@@ -89,8 +92,6 @@ func main() {
 	httpMultiplexer.HandleFunc("GET /api/chirps", apiConfig.handleGetChirps)
 	httpMultiplexer.HandleFunc("GET /api/chirps/{chirpID}", apiConfig.handleGetChirpByID)
 	httpMultiplexer.HandleFunc("DELETE /api/chirps/{chirpID}", apiConfig.handleDeleteChirpByID)
-
-
 
 	log.Printf("Serving on port 8080\n")
 	err := httpServer.ListenAndServe()

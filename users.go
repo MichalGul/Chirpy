@@ -27,8 +27,8 @@ func parseExpirationTime(expirationTime *int) int {
 func (cfg *apiConfig) handleLogin(response http.ResponseWriter, request *http.Request) {
 
 	type request_parameters struct {
-		Email            string `json:"email"`
-		Password         string `json:"password"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	decoder := json.NewDecoder(request.Body)
@@ -68,9 +68,9 @@ func (cfg *apiConfig) handleLogin(response http.ResponseWriter, request *http.Re
 	}
 
 	createdRefreshToken, err := cfg.db.CreateRefreshToken(request.Context(), database.CreateRefreshTokenParams{
-		Token: refreshToken,
-		UserID: user.ID,
-		ExpiresAt: time.Now().Add(time.Duration(60*24)*time.Hour),
+		Token:     refreshToken,
+		UserID:    user.ID,
+		ExpiresAt: time.Now().Add(time.Duration(60*24) * time.Hour),
 	})
 	if err != nil {
 		respondWithError(response, 401, "error adding refresh token to database", err)
@@ -78,12 +78,13 @@ func (cfg *apiConfig) handleLogin(response http.ResponseWriter, request *http.Re
 	}
 
 	returnUser := User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-		Token:     &token,
+		ID:           user.ID,
+		CreatedAt:    user.CreatedAt,
+		UpdatedAt:    user.UpdatedAt,
+		Email:        user.Email,
+		Token:        &token,
 		RefreshToken: &createdRefreshToken.Token,
+		IsChirpyRed:  &user.IsChirpyRed,
 	}
 
 	respondWithJSON(response, 200, returnUser)
@@ -125,26 +126,24 @@ func (cfg *apiConfig) handleUsers(response http.ResponseWriter, request *http.Re
 	}
 
 	respBody := User{
-		ID:        createdUser.ID,
-		CreatedAt: createdUser.CreatedAt,
-		UpdatedAt: createdUser.UpdatedAt,
-		Email:     createdUser.Email,
+		ID:          createdUser.ID,
+		CreatedAt:   createdUser.CreatedAt,
+		UpdatedAt:   createdUser.UpdatedAt,
+		Email:       createdUser.Email,
+		IsChirpyRed: &createdUser.IsChirpyRed,
 	}
 
 	response.Header().Set("Content-Type", "application/json")
 	respondWithJSON(response, 201, respBody)
 }
 
-
 func (cfg *apiConfig) handleEditUser(response http.ResponseWriter, request *http.Request) {
-	
+
 	//expected request put parameters
 	type request_parameters struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-
-
 
 	tokenString, err := auth.GetBearerToken(request.Header)
 	if err != nil {
@@ -175,8 +174,8 @@ func (cfg *apiConfig) handleEditUser(response http.ResponseWriter, request *http
 	}
 
 	editedUser, err := cfg.db.UpdateUser(request.Context(), database.UpdateUserParams{
-		ID: userId,
-		Email: reqParams.Email,
+		ID:             userId,
+		Email:          reqParams.Email,
 		HashedPassword: passwordHash,
 	})
 
@@ -186,10 +185,11 @@ func (cfg *apiConfig) handleEditUser(response http.ResponseWriter, request *http
 	}
 
 	respBody := User{
-		ID:        editedUser.ID,
-		CreatedAt: editedUser.CreatedAt,
-		UpdatedAt: editedUser.UpdatedAt,
-		Email:     editedUser.Email,
+		ID:          editedUser.ID,
+		CreatedAt:   editedUser.CreatedAt,
+		UpdatedAt:   editedUser.UpdatedAt,
+		Email:       editedUser.Email,
+		IsChirpyRed: &editedUser.IsChirpyRed,
 	}
 
 	response.Header().Set("Content-Type", "application/json")

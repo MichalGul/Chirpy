@@ -22,3 +22,5 @@ SELECT * FROM users where users.id = $1;
 -- name: UpdateUser :one
 UPDATE users set email = $2, hashed_password = $3, updated_at = NOW() where id = $1 RETURNING *;
 
+-- name: SetChirpyRed :one
+UPDATE users set is_chirpy_red = $2, updated_at = NOW() where id = $1 RETURNING *;
