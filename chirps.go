@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/MichalGul/Chirpy/internal/auth"
@@ -114,6 +115,13 @@ func (cfg *apiConfig) handleGetChirps(response http.ResponseWriter, request *htt
 			UserID:    c.UserID,
 		}
 
+	}
+
+	sortType := request.URL.Query().Get("sort")
+	if sortType == "desc" {
+		sort.Slice(chirpResponse, func(i, j int) bool { return chirpResponse[i].CreatedAt.After(chirpResponse[j].CreatedAt) })
+	} else {
+		sort.Slice(chirpResponse, func(i, j int) bool { return chirpResponse[i].CreatedAt.Before(chirpResponse[j].CreatedAt) })
 	}
 
 	log.Printf("chirps: %v \n", chirpResponse)
